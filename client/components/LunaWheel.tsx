@@ -30,7 +30,7 @@ function playChime() {
 }
 
 export const LunaWheel: React.FC<LunaWheelProps> = ({ className }) => {
-  const { members, recordWin, clearLastWinner } = useLuna();
+  const { members, clearLastWinner, startSpin, spinSession } = useLuna();
   const controls = useAnimation();
   const [spinning, setSpinning] = useState(false);
   const [winnerIdx, setWinnerIdx] = useState<number | null>(null);
@@ -62,16 +62,6 @@ export const LunaWheel: React.FC<LunaWheelProps> = ({ className }) => {
 
   const segAngle = members.length > 0 ? 360 / members.length : 0;
 
-  const pickFairIndex = () => {
-    // Fairness: pick among members with minimal spinsWon
-    const min = Math.min(...members.map((m) => m.spinsWon));
-    const candidates = members
-      .map((m, i) => ({ m, i }))
-      .filter(({ m }) => m.spinsWon === (isFinite(min) ? min : 0));
-    const chosen = candidates[Math.floor(Math.random() * candidates.length)]?.i ?? 0;
-    return chosen;
-  };
-
   function playWhoosh() {
     try {
       const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -98,33 +88,8 @@ export const LunaWheel: React.FC<LunaWheelProps> = ({ className }) => {
 
   const handleSpin = async () => {
     if (spinning || members.length === 0) return;
-    const index = pickFairIndex();
-    setWinnerIdx(index);
-    setSpinning(true);
     setConfetti(false);
-    playWhoosh();
-
-    // Bring selected segment's center to the top (0deg). Pointer stays fixed at top.
-    const centerAngle = index * segAngle + segAngle / 2;
-    const fullTurns = 50 + Math.floor(Math.random() * 20); // fast, many rotations
-    const targetRotation = fullTurns * 360 + (360 - centerAngle);
-
-    // Spin for 20 seconds
-    await controls.start({
-      rotate: targetRotation,
-      transition: { duration: 20, ease: [0.05, 0.8, 0.05, 1] },
-    });
-
-    // Winner announcement at 21s (+1s after stop)
-    setTimeout(() => {
-      const winner = members[index];
-      recordWin(winner.id);
-      setSpinning(false);
-      setConfetti(true);
-      playChime();
-      // Full screen confetti for 20s
-      setTimeout(() => setConfetti(false), 20000);
-    }, 1000);
+    await startSpin();
   };
 
   const resetWheel = () => {
@@ -156,6 +121,28 @@ export const LunaWheel: React.FC<LunaWheelProps> = ({ className }) => {
     }
     return list;
   }, [members, cx, cy, r, colors, segAngle]);
+
+  // React to spin sessions from server
+  React.useEffect(() => {
+    if (!spinSession) return;
+    const { index, fullTurns, segAngle: segA, startedAt, durationMs } = spinSession;
+    setWinnerIdx(index);
+    setSpinning(true);
+    playWhoosh();
+    const centerAngle = index * segA + segA / 2;
+    const targetRotation = fullTurns * 360 + (360 - centerAngle);
+    const now = Date.now();
+    const elapsed = Math.max(0, now - startedAt);
+    const remaining = Math.max(0.2, (durationMs - elapsed) / 1000);
+    controls.start({ rotate: targetRotation, transition: { duration: remaining, ease: [0.05, 0.8, 0.05, 1] } }).then(() => {
+      setTimeout(() => {
+        setSpinning(false);
+        setConfetti(true);
+        playChime();
+        setTimeout(() => setConfetti(false), 20000);
+      }, 1000);
+    });
+  }, [spinSession, controls]);
 
   return (
     <div className={className}>
