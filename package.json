@@ -21,9 +21,12 @@
     "typecheck": "tsc"
   },
   "dependencies": {
+    "@netlify/blobs": "^8.1.0",
+    "@netlify/functions": "^2.8.2",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "react-confetti": "^6.4.0",
+    "serverless-http": "^3.2.0",
     "zod": "^3.25.76",
     "zustand": "^4.5.2"
   },
