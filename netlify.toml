@@ -5,8 +5,9 @@
 
 
 [functions]
-  external_node_modules = ["express"]
+  external_node_modules = ["express", "serverless-http", "cors"]
   node_bundler = "esbuild"
+  included_files = ["server/**"]
   
 [[redirects]]
   force = true

@@ -1,5 +1,5 @@
 import serverless from "serverless-http";
+import { createServerlessServer } from "../../server/index-serverless";
 
-import { createServer } from "../../server";
-
-export const handler = serverless(createServer());
+const app = createServerlessServer();
+export const handler = serverless(app);
