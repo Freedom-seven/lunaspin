@@ -5,7 +5,6 @@
 
 [functions]
   directory = "netlify/functions"
-  external_node_modules = ["express", "serverless-http"]
   node_bundler = "esbuild"
 
 [[redirects]]
@@ -17,4 +16,10 @@
 [[redirects]]
   from = "/*"
   to = "/index.html"
+  status = 200
+
+# Health endpoint (optional convenience)
+[[redirects]]
+  from = "/health"
+  to = "/.netlify/functions/health"
   status = 200
