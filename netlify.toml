@@ -3,13 +3,18 @@
   functions = "netlify/functions"
   publish = "dist/spa"
 
-
 [functions]
+  directory = "netlify/functions"
   external_node_modules = ["express", "serverless-http"]
   node_bundler = "esbuild"
-  
+
 [[redirects]]
-  force = true
   from = "/api/*"
-  status = 200
   to = "/.netlify/functions/api/:splat"
+  status = 200
+
+# SPA fallback
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

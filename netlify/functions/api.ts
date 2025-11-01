@@ -60,11 +60,11 @@ app.get("/api/state", async (req: Request, res: Response) => {
   res.json({ team, state });
 });
 
-// SSE not supported - return error
+// SSE not supported in Netlify Functions. Return 200 with a helpful message so callers don't see 5xx.
 app.get("/api/events", (req: Request, res: Response) => {
-  res.status(501).json({ 
-    error: "SSE not supported in serverless",
-    message: "Use polling instead" 
+  res.status(200).json({ 
+    events: [],
+    note: "SSE not supported in serverless; use polling instead",
   });
 });
 
