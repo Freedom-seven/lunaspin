@@ -144,13 +144,36 @@ export const useLuna = create<LunaState>()(
       },
 
       startSpin: async () => {
+        const s = get();
+        const members = s.members || [];
+        if (members.length < 2) return;
+
+        // Compute a fair pick locally so spin works even without backend events
+        const min = Math.min(...members.map((m) => m.spinsWon));
+        const candidates = members
+          .map((m, i) => ({ m, i }))
+          .filter(({ m }) => m.spinsWon === (isFinite(min) ? min : 0));
+        const pick = candidates[Math.floor(Math.random() * Math.max(1, candidates.length))] || { i: 0, m: members[0] };
+
+        const segAngle = 360 / members.length;
+        const index = pick.i;
+        const winnerId = pick.m.id;
+        const fullTurns = 50 + Math.floor(Math.random() * 20);
+        const startedAt = Date.now();
+        const durationMs = 20000;
+
+        // Optimistically set spin session and record win locally
+        set({ spinSession: { index, winnerId, startedAt, durationMs, fullTurns, segAngle }, lastWinnerId: winnerId });
+        get().recordWin(winnerId);
+
+        // Notify server best-effort (ignore failures)
         try { await apiPost("/api/spin/start", {}); } catch {}
       },
 
       hydrateFromServer: (remote) => set((s) => ({
-        teamName: remote.teamName ?? s.teamName,
-        members: Array.isArray(remote.members) ? remote.members : s.members,
-        history: Array.isArray(remote.history) ? remote.history : s.history,
+        teamName: (remote.teamName && remote.teamName.length > 0) ? remote.teamName : s.teamName,
+        members: (Array.isArray(remote.members) && remote.members.length > 0) ? remote.members : s.members,
+        history: (Array.isArray(remote.history) && remote.history.length > 0) ? remote.history : s.history,
       })),
 
       setSpinSession: (spin) => set({ spinSession: spin, lastWinnerId: spin?.winnerId ?? null }),
