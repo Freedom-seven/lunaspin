@@ -12,6 +12,12 @@
   to = "/.netlify/functions/api/:splat"
   status = 200
 
+# Dedicated SSE endpoint
+[[redirects]]
+  from = "/api/events-sse"
+  to = "/.netlify/functions/sse"
+  status = 200
+
 # SPA fallback
 [[redirects]]
   from = "/*"

@@ -38,12 +38,38 @@ export type ServerEvent =
 
 export function subscribe(onEvent: (ev: ServerEvent) => void) {
   const team = getTeamId();
-  const es = new EventSource(`/api/events?team=${encodeURIComponent(team)}`);
+  // Use dedicated SSE endpoint routed via Netlify to ensure correct MIME type
+  const es = new EventSource(`/api/events-sse?team=${encodeURIComponent(team)}`);
+  let stopped = false;
+  let pollId: number | null = null;
+
+  function startPolling() {
+    if (pollId != null) return;
+    pollId = window.setInterval(async () => {
+      try {
+        const { state } = await apiGet<{ team: string; state: any }>("/api/state");
+        if (!stopped) onEvent({ type: "state", team, state } as any);
+      } catch (err) {
+        // swallow polling errors; will retry next tick
+      }
+    }, 15000);
+  }
+
   es.onmessage = (e) => {
     try {
       const data = JSON.parse(e.data);
       onEvent(data);
     } catch {}
   };
-  return () => es.close();
+  es.onerror = () => {
+    // If SSE fails (e.g., serverless env), fall back to polling
+    es.close();
+    startPolling();
+  };
+
+  return () => {
+    stopped = true;
+    try { es.close(); } catch {}
+    if (pollId != null) { window.clearInterval(pollId); pollId = null; }
+  };
 }
