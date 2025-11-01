@@ -30,7 +30,7 @@ function playChime() {
 }
 
 export const LunaWheel: React.FC<LunaWheelProps> = ({ className }) => {
-  const { members, clearLastWinner, startSpin, spinSession } = useLuna();
+  const { members, clearLastWinner, startSpin, spinSession, finalizeSpin } = useLuna();
   const controls = useAnimation();
   const [spinning, setSpinning] = useState(false);
   const [winnerIdx, setWinnerIdx] = useState<number | null>(null);
@@ -137,6 +137,8 @@ export const LunaWheel: React.FC<LunaWheelProps> = ({ className }) => {
     controls.start({ rotate: targetRotation, transition: { duration: remaining, ease: [0.05, 0.8, 0.05, 1] } }).then(() => {
       setTimeout(() => {
         setSpinning(false);
+        // Reveal winner and record only after spin completes
+        try { finalizeSpin(); } catch {}
         setConfetti(true);
         playChime();
         setTimeout(() => setConfetti(false), 20000);

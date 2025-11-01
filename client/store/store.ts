@@ -39,6 +39,7 @@ export interface LunaState {
   clearLastWinner: () => void;
   recordWin: (memberId: string) => void; // kept for local fallback
   startSpin: () => Promise<void> | void;
+  finalizeSpin: () => void; // set lastWinnerId and record after animation completes
   setTopicForWinner: (topic: string) => Promise<void> | void;
   updateHistoryTopic: (index: number, topic: string) => Promise<void> | void;
   deleteHistoryEntry: (index: number) => Promise<void> | void;
@@ -162,9 +163,8 @@ export const useLuna = create<LunaState>()(
         const startedAt = Date.now();
         const durationMs = 20000;
 
-        // Optimistically set spin session and record win locally
-        set({ spinSession: { index, winnerId, startedAt, durationMs, fullTurns, segAngle }, lastWinnerId: winnerId });
-        get().recordWin(winnerId);
+        // Set spin session only; do not set lastWinnerId or record until animation completes
+        set({ spinSession: { index, winnerId, startedAt, durationMs, fullTurns, segAngle } });
 
         // Notify server best-effort (ignore failures)
         try { await apiPost("/api/spin/start", {}); } catch {}
@@ -176,7 +176,16 @@ export const useLuna = create<LunaState>()(
         history: (Array.isArray(remote.history) && remote.history.length > 0) ? remote.history : s.history,
       })),
 
-      setSpinSession: (spin) => set({ spinSession: spin, lastWinnerId: spin?.winnerId ?? null }),
+      setSpinSession: (spin) => set({ spinSession: spin }),
+
+      finalizeSpin: () => {
+        const s0 = get();
+        const winnerId = s0.spinSession?.winnerId;
+        if (!winnerId) return;
+        // Record and reveal winner now
+        get().recordWin(winnerId);
+        set({ lastWinnerId: winnerId });
+      },
 
       exportJSON: () => {
         const s = get();
