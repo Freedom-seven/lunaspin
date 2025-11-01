@@ -31,13 +31,30 @@ export const handler = async (event: any) => {
   }
 
   if (path.includes("/api/events") && method === "GET") {
+    const accept = (event.headers?.accept as string) || "";
+    if (accept.includes("text/event-stream")) {
+      const sseHeaders = {
+        ...headers,
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+      };
+      const payload = {
+        type: "state",
+        team: queryParams.team || "default",
+        note: "SSE single-shot; use polling or /api/events-sse",
+        timestamp: new Date().toISOString(),
+      };
+      const body = `retry: 15000\n` + `data: ${JSON.stringify(payload)}\n\n`;
+      return { statusCode: 200, headers: sseHeaders, body };
+    }
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
         events: [],
         team: queryParams.team || "default",
-        message: "Events endpoint working (SSE not supported in serverless)",
+        message: "Events endpoint working",
       }),
     };
   }
@@ -65,6 +82,22 @@ export const handler = async (event: any) => {
         message: "Spin started successfully",
       }),
     };
+  }
+
+  // History topic updates (stubs)
+  if (path.includes("/api/history/set-last-topic") && method === "POST") {
+    return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
+  }
+  if (path.includes("/api/history/update-topic") && method === "POST") {
+    return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
+  }
+
+  // DELETE endpoints
+  if (method === "DELETE" && path.includes("/api/history/")) {
+    return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
+  }
+  if (method === "DELETE" && path.includes("/api/members/") && !path.includes("/api/members/add")) {
+    return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
   }
 
   // Default 404 for unknown routes
